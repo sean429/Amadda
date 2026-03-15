@@ -39,11 +39,26 @@ class SnapshotRepository:
                     app_name TEXT NOT NULL,
                     title TEXT NOT NULL,
                     url TEXT,
+                    item_type TEXT NOT NULL DEFAULT 'application',
+                    process_name TEXT,
+                    executable_path TEXT,
                     created_at TEXT NOT NULL,
                     FOREIGN KEY (snapshot_id) REFERENCES snapshots(id) ON DELETE CASCADE
                 );
                 """
             )
+            existing_columns = {
+                row["name"]
+                for row in connection.execute("PRAGMA table_info(snapshot_items)").fetchall()
+            }
+            if "item_type" not in existing_columns:
+                connection.execute(
+                    "ALTER TABLE snapshot_items ADD COLUMN item_type TEXT NOT NULL DEFAULT 'application'"
+                )
+            if "process_name" not in existing_columns:
+                connection.execute("ALTER TABLE snapshot_items ADD COLUMN process_name TEXT")
+            if "executable_path" not in existing_columns:
+                connection.execute("ALTER TABLE snapshot_items ADD COLUMN executable_path TEXT")
             connection.commit()
 
     def save_snapshot(self, items: list[SnapshotItem]) -> SnapshotRecord:
@@ -56,8 +71,17 @@ class SnapshotRepository:
             snapshot_id = int(cursor.lastrowid)
             connection.executemany(
                 """
-                INSERT INTO snapshot_items (snapshot_id, app_name, title, url, created_at)
-                VALUES (?, ?, ?, ?, ?)
+                INSERT INTO snapshot_items (
+                    snapshot_id,
+                    app_name,
+                    title,
+                    url,
+                    item_type,
+                    process_name,
+                    executable_path,
+                    created_at
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 [
                     (
@@ -65,6 +89,9 @@ class SnapshotRepository:
                         item.app_name,
                         item.title,
                         item.url,
+                        item.item_type,
+                        item.process_name,
+                        item.executable_path,
                         (item.created_at or datetime.utcnow()).isoformat(),
                     )
                     for item in items
@@ -87,7 +114,7 @@ class SnapshotRepository:
 
             item_rows = connection.execute(
                 """
-                SELECT app_name, title, url, created_at
+                SELECT app_name, title, url, item_type, process_name, executable_path, created_at
                 FROM snapshot_items
                 WHERE snapshot_id = ?
                 ORDER BY id ASC
@@ -100,6 +127,9 @@ class SnapshotRepository:
                 app_name=row["app_name"],
                 title=row["title"],
                 url=row["url"],
+                item_type=row["item_type"],
+                process_name=row["process_name"],
+                executable_path=row["executable_path"],
                 created_at=datetime.fromisoformat(row["created_at"]),
             )
             for row in item_rows

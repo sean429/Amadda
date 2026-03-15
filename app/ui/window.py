@@ -131,11 +131,21 @@ class MainWindow(QMainWindow):
 
         status = "ok" if response.result.success else "error"
         self.append_log(f"Result [{status}]: {response.result.message}")
+        logs = response.result.data.get("logs")
+        if logs:
+            for line in logs:
+                self.append_log(f"  log: {line}")
         items = response.result.data.get("items")
         if items:
             for item in items:
                 self.append_log(
-                    f"  - {item['app_name']} | {item['title']} | {item.get('url') or 'no-url'}"
+                    "  - "
+                    f"{item['item_type']} | "
+                    f"{item['app_name']} | "
+                    f"{item['title']} | "
+                    f"{item.get('process_name') or 'no-process'} | "
+                    f"{item.get('executable_path') or 'no-exe'} | "
+                    f"{item.get('url') or 'no-url'}"
                 )
 
 

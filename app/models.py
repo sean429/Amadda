@@ -10,6 +10,9 @@ class SnapshotItem:
     app_name: str
     title: str
     url: str | None = None
+    item_type: str = "application"
+    process_name: str | None = None
+    executable_path: str | None = None
     created_at: datetime | None = None
 
 
