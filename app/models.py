@@ -24,6 +24,23 @@ class SnapshotRecord:
 
 
 @dataclass(slots=True)
+class TrackedProcess:
+    process_name: str
+    executable_path: str | None = None
+    window_title: str | None = None
+    created_at: datetime | None = None
+
+
+@dataclass(slots=True)
+class RunningProcess:
+    pid: int
+    process_name: str
+    window_title: str | None = None
+    executable_path: str | None = None
+    visible_window_titles: list[str] = field(default_factory=list)
+
+
+@dataclass(slots=True)
 class Intent:
     intent: str
     params: dict[str, Any] = field(default_factory=dict)

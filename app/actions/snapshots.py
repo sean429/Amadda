@@ -8,24 +8,32 @@ from app.actions.snapshot_collectors import (
     WindowsSnapshotCollector,
 )
 from app.db.sqlite import SnapshotRepository
-from app.models import ActionResult, SnapshotItem
+from app.models import ActionResult, RunningProcess, SnapshotItem, TrackedProcess
 
 
 class SnapshotActionService:
     def __init__(self, repository: SnapshotRepository) -> None:
         self.repository = repository
-        self.collector = self._build_collector()
 
     def _build_collector(self) -> SnapshotCollector:
         if os.name == "nt":
-            return WindowsSnapshotCollector()
+            return WindowsSnapshotCollector(self.repository.list_tracked_processes())
         return NoopSnapshotCollector()
 
     def collect_snapshot_items(self) -> list[SnapshotItem]:
-        return self.collector.collect().items
+        return self._build_collector().collect().items
+
+    def list_running_processes(self) -> list[RunningProcess]:
+        return self._build_collector().list_running_processes()
+
+    def save_tracked_processes(self, tracked_processes: list[TrackedProcess]) -> None:
+        self.repository.replace_tracked_processes(tracked_processes)
+
+    def list_tracked_processes(self) -> list[TrackedProcess]:
+        return self.repository.list_tracked_processes()
 
     def save_snapshot(self) -> ActionResult:
-        collection = self.collector.collect()
+        collection = self._build_collector().collect()
         items = collection.items
         record = self.repository.save_snapshot(items)
         return ActionResult(

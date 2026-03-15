@@ -14,7 +14,7 @@ try:
 except ImportError:  # pragma: no cover - dependency availability varies by machine.
     psutil = None
 
-from app.models import SnapshotItem
+from app.models import RunningProcess, SnapshotItem, TrackedProcess
 
 
 @dataclass(slots=True)
@@ -27,6 +27,9 @@ class SnapshotCollector:
     def collect(self) -> SnapshotCollectionResult:
         raise NotImplementedError
 
+    def list_running_processes(self) -> list[RunningProcess]:
+        raise NotImplementedError
+
 
 class NoopSnapshotCollector(SnapshotCollector):
     def collect(self) -> SnapshotCollectionResult:
@@ -34,6 +37,9 @@ class NoopSnapshotCollector(SnapshotCollector):
             items=[],
             logs=["Snapshot collection is not supported on this platform yet."],
         )
+
+    def list_running_processes(self) -> list[RunningProcess]:
+        return []
 
 
 class WindowsSnapshotCollector(SnapshotCollector):
@@ -103,17 +109,26 @@ class WindowsSnapshotCollector(SnapshotCollector):
         "\\riot vanguard\\",
     )
 
+    def __init__(self, tracked_processes: list[TrackedProcess] | None = None) -> None:
+        self.tracked_processes = tracked_processes or []
+
     def collect(self) -> SnapshotCollectionResult:
         collected_at = datetime.utcnow()
         logs: list[str] = []
         window_titles_by_pid = self._collect_window_titles(logs)
+        process_infos = self._iter_processes(logs)
+
+        if not self.tracked_processes:
+            logs.append("No tracked processes are configured; snapshot collection returned no process items.")
+            return SnapshotCollectionResult(items=[], logs=logs)
 
         items: list[SnapshotItem] = []
         process_count = 0
         process_with_windows = 0
         ignored_process_count = 0
+        tracked_match_count = 0
 
-        for process_info in self._iter_processes(logs):
+        for process_info in process_infos:
             pid = process_info["pid"]
             process_name = process_info["name"]
             executable_path = process_info.get("exe")
@@ -122,8 +137,11 @@ class WindowsSnapshotCollector(SnapshotCollector):
             if self._should_ignore_process(process_name, executable_path, visible_titles):
                 ignored_process_count += 1
                 continue
+            if not self._matches_tracked_process(process_name, executable_path, visible_titles):
+                continue
 
             process_count += 1
+            tracked_match_count += 1
             if visible_titles:
                 process_with_windows += 1
 
@@ -158,6 +176,7 @@ class WindowsSnapshotCollector(SnapshotCollector):
 
         window_item_count = sum(1 for item in items if item.item_type == "window")
         logs.append(f"Ignored {ignored_process_count} process(es) by filter.")
+        logs.append(f"Matched {tracked_match_count} tracked process(es).")
         logs.append(f"Collected {process_count} processes after filtering.")
         logs.append(
             f"Collected {window_item_count} visible window title(s) across {process_with_windows} process(es)."
@@ -166,6 +185,44 @@ class WindowsSnapshotCollector(SnapshotCollector):
             f"Collected executable paths for {sum(1 for item in items if item.item_type == 'process' and item.executable_path)} process item(s)."
         )
         return SnapshotCollectionResult(items=items, logs=logs)
+
+    def list_running_processes(self) -> list[RunningProcess]:
+        logs: list[str] = []
+        window_titles_by_pid = self._collect_window_titles(logs)
+        running_processes: list[RunningProcess] = []
+
+        for process_info in self._iter_processes(logs):
+            pid = int(process_info["pid"])
+            process_name = str(process_info["name"])
+            executable_path = process_info.get("exe")
+            visible_titles = window_titles_by_pid.get(pid, [])
+            primary_title = visible_titles[0] if visible_titles else None
+
+            running_processes.append(
+                RunningProcess(
+                    pid=pid,
+                    process_name=process_name,
+                    window_title=primary_title,
+                    executable_path=str(executable_path) if executable_path else None,
+                    visible_window_titles=list(visible_titles),
+                )
+            )
+
+        running_processes.sort(
+            key=lambda process: (
+                0 if process.window_title else 1,
+                0
+                if not self._should_ignore_process(
+                    process.process_name,
+                    process.executable_path,
+                    process.visible_window_titles,
+                )
+                else 1,
+                process.process_name.lower(),
+                process.pid,
+            )
+        )
+        return running_processes
 
     def _should_ignore_process(
         self,
@@ -294,3 +351,26 @@ class WindowsSnapshotCollector(SnapshotCollector):
             f"Enumerated {sum(len(titles) for titles in titles_by_pid.values())} visible window title(s)."
         )
         return titles_by_pid
+
+    def _matches_tracked_process(
+        self,
+        process_name: str,
+        executable_path: str | None,
+        visible_titles: list[str],
+    ) -> bool:
+        normalized_path = executable_path.casefold() if executable_path else None
+        visible_title_set = {title.casefold() for title in visible_titles}
+
+        for tracked_process in self.tracked_processes:
+            if tracked_process.process_name != process_name:
+                continue
+            if tracked_process.executable_path:
+                if not normalized_path:
+                    continue
+                if tracked_process.executable_path.casefold() != normalized_path:
+                    continue
+            if tracked_process.window_title:
+                if tracked_process.window_title.casefold() not in visible_title_set:
+                    continue
+            return True
+        return False

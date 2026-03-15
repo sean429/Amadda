@@ -1,0 +1,14 @@
+{
+  "manifest_version": 3,
+  "name": "Amadda MVP Browser Snapshot",
+  "version": "0.1.0",
+  "description": "Collect current Chrome window tab context and send it to the local Amadda backend.",
+  "permissions": ["tabs"],
+  "host_permissions": ["http://127.0.0.1:8765/*"],
+  "background": {
+    "service_worker": "service_worker.js"
+  },
+  "action": {
+    "default_title": "Send browser snapshot to Amadda"
+  }
+}
