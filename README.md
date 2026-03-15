@@ -219,6 +219,83 @@ Amadda는 **완전 복원**이 아니라
 
 ## 9. Development Roadmap
 
+---
+
+## 10. MVP Structure
+
+```text
+app/
+  actions/
+    browser.py
+    snapshots.py
+    system.py
+  api/
+    server.py
+  db/
+    sqlite.py
+  dispatcher/
+    service.py
+  intents/
+    parser.py
+  permissions/
+    service.py
+  ui/
+    window.py
+  config.py
+  main.py
+  models.py
+  services.py
+data/
+requirements.txt
+```
+
+### MVP Layers
+
+- Input layer: PySide6 desktop window with text input
+- Intent parsing layer: rule-based parser for the initial command set
+- Permission layer: explicit confirmation for dangerous actions
+- Action dispatcher: routes parsed intents to action services
+- Snapshot storage layer: SQLite-backed snapshot persistence
+
+---
+
+## 11. Run The MVP
+
+### Install dependencies
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+### Start the app
+
+```bash
+python3 -m app.main
+```
+
+This launches:
+
+- a local FastAPI service on `http://127.0.0.1:8765`
+- a PySide6 desktop window for text commands
+
+### Example commands
+
+- `save snapshot`
+- `restore latest snapshot`
+- `open https://example.com`
+- `sleep`
+- `shutdown`
+
+### Notes
+
+- On Windows, `sleep` and `shutdown` issue native commands after confirmation.
+- On non-Windows platforms, those dangerous system actions are safe stubs for development.
+- Browser snapshot collection is intentionally stubbed in the MVP. A Chrome extension or Windows window inspection can be attached later.
+- Voice input can be added before the parser via Whisper transcription.
+- Gemini or another LLM can be added after the parser as a fallback or ranking layer once the rule-based MVP is stable.
+
 - [x] 프로젝트 주제 및 방향성 정의
 - [x] 핵심 기능 설계
 - [ ] FastAPI 서버 구축

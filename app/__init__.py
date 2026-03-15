@@ -1,0 +1,1 @@
+"""Amadda MVP package."""
