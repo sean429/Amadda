@@ -124,13 +124,30 @@ Windows 프로세스 수집만으로는 정확한 탭 URL을 얻기 어렵다.
 
 ## 현재 범위
 
-현재 구현은 최소 기능만 포함한다.
-
 - 현재 Chrome 창의 탭만 수집
 - `url`, `title`, `active`만 전송
-- 아이콘 클릭으로 수동 스냅샷 실행
+- **15분 주기 자동 전송** (`chrome.alarms` 기반)
+- 아이콘 클릭으로 수동 즉시 전송 가능 (배지 피드백 포함)
 - YouTube timestamp 미구현
 - 불필요한 popup/options UI 미구현
+
+## 자동 전송 구현 방식
+
+MV3 service worker는 언제든 브라우저에 의해 종료될 수 있어 `setInterval`이 동작하지 않는다.
+대신 `chrome.alarms` API를 사용한다.
+
+```text
+[Extension 설치 또는 Chrome 재시작]
+  → onInstalled / onStartup 리스너
+  → ensureAlarm() : 알람이 없으면 15분 주기 알람 생성
+
+[15분 경과]
+  → alarms.onAlarm 리스너 발동
+  → sendSnapshot() 호출
+  → 백엔드 꺼져 있으면 조용히 실패 (console.warn)
+```
+
+수동 클릭은 기존과 동일하게 동작하며, 성공/실패 배지를 3초간 표시한다.
 
 ## 설치 방법
 

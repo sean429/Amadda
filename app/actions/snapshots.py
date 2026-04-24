@@ -35,6 +35,16 @@ class SnapshotActionService:
     def save_snapshot(self) -> ActionResult:
         collection = self._build_collector().collect()
         items = collection.items
+
+        browser_items = self.repository.get_latest_browser_tab_items()
+        if browser_items:
+            browser_bases = {item.process_name.casefold() for item in browser_items}
+            items = [
+                item for item in items
+                if item.process_name.removesuffix(".exe").casefold() not in browser_bases
+            ]
+        items = items + browser_items
+
         record = self.repository.save_snapshot(items)
         return ActionResult(
             success=True,

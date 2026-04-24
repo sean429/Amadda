@@ -180,6 +180,37 @@ class SnapshotRepository:
         cutoff_id = int(cutoff_row["id"])
         connection.execute("DELETE FROM snapshots WHERE id < ?", (cutoff_id,))
 
+    def get_latest_browser_tab_items(self) -> list[SnapshotItem]:
+        with self.connect() as connection:
+            rows = connection.execute(
+                """
+                SELECT si.app_name, si.title, si.url, si.item_type,
+                       si.process_name, si.executable_path, si.created_at
+                FROM snapshot_items si
+                INNER JOIN (
+                    SELECT snapshot_id
+                    FROM snapshot_items
+                    WHERE item_type = 'browser_tab'
+                    ORDER BY snapshot_id DESC
+                    LIMIT 1
+                ) latest ON si.snapshot_id = latest.snapshot_id
+                WHERE si.item_type = 'browser_tab'
+                ORDER BY si.id ASC
+                """
+            ).fetchall()
+        return [
+            SnapshotItem(
+                app_name=row["app_name"],
+                title=row["title"],
+                url=row["url"],
+                item_type=row["item_type"],
+                process_name=row["process_name"],
+                executable_path=row["executable_path"],
+                created_at=datetime.fromisoformat(row["created_at"]),
+            )
+            for row in rows
+        ]
+
     def get_latest_snapshot(self) -> SnapshotRecord | None:
         with self.connect() as connection:
             snapshot_row = connection.execute(

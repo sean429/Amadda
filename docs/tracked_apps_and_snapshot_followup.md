@@ -1,6 +1,6 @@
 # Amadda Tracked Apps / Snapshot Follow-up
 
-기준 커밋: `0af231b` `Replace stub snapshot collector with real Windows context collection`
+기준 커밋: `0e2a687` `docs update`
 
 ## 지금까지 반영된 것
 
@@ -40,6 +40,19 @@
   - 앱 시작 시 아님
   - 새 snapshot 저장 직후
 
+### 5. Browser 자동 수집 구현
+
+- Chrome extension에 15분 주기 자동 전송 추가
+- `chrome.alarms` API 사용 (MV3 service worker는 언제든 종료될 수 있어 `setInterval` 불가)
+- 변경 파일:
+  - `browser_extension/manifest.json` — `"alarms"` 권한 추가
+  - `browser_extension/service_worker.js` — 알람 등록 및 자동 전송 로직 추가
+- 동작 방식:
+  - 확장 설치(`onInstalled`) 및 service worker 재시작(`onStartup`) 시 알람 자동 등록
+  - 15분마다 `sendSnapshot()` 자동 호출
+  - 백엔드가 꺼져 있으면 조용히 실패 (콘솔 경고만)
+  - 수동 클릭 기능과 배지 피드백은 그대로 유지
+
 ## 현재 한계 / 아직 안 된 것
 
 ### 1. GUI `save snapshot`에는 URL이 포함되지 않음
@@ -47,12 +60,7 @@
 - 현재 GUI 저장은 Windows 프로세스/윈도우 snapshot만 저장
 - 브라우저 URL은 Chrome extension이 별도로 `/browser/snapshot`으로 전송할 때만 저장됨
 
-### 2. extension 자동 전송 미구현
-
-- 현재는 extension 아이콘 클릭 시에만 브라우저 탭 snapshot 저장
-- 15분 주기 자동 전송은 아직 없음
-
-### 3. 기존 데이터 즉시 정리 미구현
+### 2. 기존 데이터 즉시 정리 미구현
 
 - 보존 개수 제한은 "앞으로 저장되는 흐름"에 적용됨
 - 이미 쌓인 데이터를 즉시 줄이는 별도 정리 액션은 아직 없음
@@ -64,15 +72,7 @@
 
 ## 다음 작업 제안
 
-### 우선순위 1. Browser 자동 수집
-
-- Chrome extension에 15분 주기 자동 전송 추가
-- 수집 데이터:
-  - 현재 창 또는 전체 창의 탭 URL/title/active
-- 목표:
-  - 사용자가 extension 버튼을 매번 누르지 않아도 URL 상태가 주기적으로 저장되게 하기
-
-### 우선순위 2. GUI snapshot과 browser 상태 연결
+### 우선순위 1. GUI snapshot과 browser 상태 연결
 
 - GUI `save snapshot` 시 최근 browser 상태를 함께 저장하도록 구조 정리
 - 후보 방식:

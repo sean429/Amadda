@@ -122,11 +122,9 @@ class WindowsSnapshotCollector(SnapshotCollector):
             logs.append("No tracked processes are configured; snapshot collection returned no process items.")
             return SnapshotCollectionResult(items=[], logs=logs)
 
-        items: list[SnapshotItem] = []
-        process_count = 0
-        process_with_windows = 0
+        # (process_name, executable_path) 기준으로 그룹화 — 서브 프로세스 중복 제거
+        groups: dict[tuple[str, str | None], dict] = {}
         ignored_process_count = 0
-        tracked_match_count = 0
 
         for process_info in process_infos:
             pid = process_info["pid"]
@@ -140,14 +138,29 @@ class WindowsSnapshotCollector(SnapshotCollector):
             if not self._matches_tracked_process(process_name, executable_path, visible_titles):
                 continue
 
+            key = (process_name, executable_path)
+            if key not in groups:
+                groups[key] = {
+                    "process_name": process_name,
+                    "executable_path": executable_path,
+                    "titles": [],
+                }
+            for title in visible_titles:
+                if title not in groups[key]["titles"]:
+                    groups[key]["titles"].append(title)
+
+        items: list[SnapshotItem] = []
+        process_count = 0
+        process_with_windows = 0
+        tracked_match_count = len(groups)
+
+        for (process_name, executable_path), group in groups.items():
+            visible_titles = group["titles"]
             process_count += 1
-            tracked_match_count += 1
             if visible_titles:
                 process_with_windows += 1
 
-            app_name = process_name
-            if not app_name and executable_path:
-                app_name = Path(executable_path).name
+            app_name = process_name or (Path(executable_path).name if executable_path else "unknown")
 
             items.append(
                 SnapshotItem(
