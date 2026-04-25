@@ -5,12 +5,13 @@ import threading
 from collections import defaultdict
 
 import uvicorn
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QFileInfo, Qt
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QApplication,
     QDialog,
     QDialogButtonBox,
+    QFileIconProvider,
     QHeaderView,
     QHBoxLayout,
     QLabel,
@@ -163,6 +164,7 @@ class TrackedAppsDialog(QDialog):
             ),
         )
         self.table.setRowCount(len(self.groups))
+        icon_provider = QFileIconProvider()
 
         for row, group in enumerate(self.groups):
             tracked_item = QTableWidgetItem()
@@ -172,11 +174,15 @@ class TrackedAppsDialog(QDialog):
             )
             tracked_item.setData(Qt.UserRole, row)
 
-            process_name = QTableWidgetItem(
+            label = (
                 f"{group.process_name} ({group.process_count})"
                 if group.process_count > 1
                 else group.process_name
             )
+            process_name = QTableWidgetItem(label)
+            exe_paths = [p for p in group.executable_paths_text.split(" | ") if p]
+            if exe_paths:
+                process_name.setIcon(icon_provider.icon(QFileInfo(exe_paths[0])))
             pid = QTableWidgetItem(group.pids_text)
             window_title = QTableWidgetItem(group.window_titles_text)
             executable_path = QTableWidgetItem(group.executable_paths_text)
