@@ -180,6 +180,51 @@ class SnapshotRepository:
         cutoff_id = int(cutoff_row["id"])
         connection.execute("DELETE FROM snapshots WHERE id < ?", (cutoff_id,))
 
+    def get_recent_snapshots(self, n: int = 3) -> list[SnapshotRecord]:
+        with self.connect() as connection:
+            snapshot_rows = connection.execute(
+                "SELECT id, created_at FROM snapshots ORDER BY id DESC LIMIT ?",
+                (n,),
+            ).fetchall()
+            if not snapshot_rows:
+                return []
+
+            snapshot_ids = [row["id"] for row in snapshot_rows]
+            placeholders = ",".join("?" * len(snapshot_ids))
+            item_rows = connection.execute(
+                f"""
+                SELECT snapshot_id, app_name, title, url, item_type,
+                       process_name, executable_path, created_at
+                FROM snapshot_items
+                WHERE snapshot_id IN ({placeholders})
+                ORDER BY snapshot_id DESC, id ASC
+                """,
+                snapshot_ids,
+            ).fetchall()
+
+        items_by_snapshot: dict[int, list[SnapshotItem]] = {row["id"]: [] for row in snapshot_rows}
+        for row in item_rows:
+            items_by_snapshot[row["snapshot_id"]].append(
+                SnapshotItem(
+                    app_name=row["app_name"],
+                    title=row["title"],
+                    url=row["url"],
+                    item_type=row["item_type"],
+                    process_name=row["process_name"],
+                    executable_path=row["executable_path"],
+                    created_at=datetime.fromisoformat(row["created_at"]),
+                )
+            )
+
+        return [
+            SnapshotRecord(
+                snapshot_id=int(row["id"]),
+                created_at=datetime.fromisoformat(row["created_at"]),
+                items=items_by_snapshot[row["id"]],
+            )
+            for row in snapshot_rows
+        ]
+
     def get_latest_browser_tab_items(self) -> list[SnapshotItem]:
         with self.connect() as connection:
             rows = connection.execute(

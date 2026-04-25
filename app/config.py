@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 
@@ -11,3 +12,4 @@ DB_PATH = DATA_DIR / "amadda.db"
 API_HOST = "127.0.0.1"
 API_PORT = 8765
 SNAPSHOT_RETENTION_MAX = 288
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")

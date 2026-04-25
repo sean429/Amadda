@@ -5,7 +5,7 @@ import threading
 from collections import defaultdict
 
 import uvicorn
-from PySide6.QtCore import QFileInfo, Qt
+from PySide6.QtCore import QFileInfo, QThread, Qt, Signal
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QApplication,
@@ -32,6 +32,21 @@ from app.config import API_HOST, APP_NAME
 from app.models import CommandResponse, RunningProcess, TrackedProcess
 from app.runtime import select_api_port
 from app.services import dispatcher, parser, permission_service, snapshot_actions
+
+
+class VoiceWorker(QThread):
+    status = Signal(str)
+    finished = Signal(str)
+    error = Signal(str)
+
+    def run(self) -> None:
+        try:
+            from app.actions.voice import record_and_transcribe
+            self.status.emit("녹음 중... (5s)")
+            text = record_and_transcribe()
+            self.finished.emit(text)
+        except Exception as exc:
+            self.error.emit(str(exc))
 
 
 class FastAPIServerThread(threading.Thread):
@@ -251,12 +266,16 @@ class MainWindow(QMainWindow):
         submit_button = QPushButton("Run", self)
         submit_button.clicked.connect(self.handle_submit)
 
+        self.voice_button = QPushButton("Voice", self)
+        self.voice_button.clicked.connect(self.handle_voice)
+
         tracked_apps_button = QPushButton("Tracked Apps", self)
         tracked_apps_button.clicked.connect(self.open_tracked_apps_dialog)
 
         input_row = QHBoxLayout()
         input_row.addWidget(self.input)
         input_row.addWidget(submit_button)
+        input_row.addWidget(self.voice_button)
         input_row.addWidget(tracked_apps_button)
 
         self.log = QTextEdit(self)
@@ -273,6 +292,27 @@ class MainWindow(QMainWindow):
         self.append_log(
             "Gemini or another LLM can be inserted after intent parsing once rule-based coverage is no longer enough."
         )
+
+    def handle_voice(self) -> None:
+        self.voice_button.setEnabled(False)
+        self.voice_button.setText("준비 중...")
+        self._voice_worker = VoiceWorker()
+        self._voice_worker.status.connect(self.voice_button.setText)
+        self._voice_worker.finished.connect(self._on_voice_finished)
+        self._voice_worker.error.connect(self._on_voice_error)
+        self._voice_worker.start()
+
+    def _on_voice_finished(self, text: str) -> None:
+        self.voice_button.setText("Voice")
+        self.voice_button.setEnabled(True)
+        self.append_log(f"[Voice] {text}")
+        self.input.setText(text)
+        self.handle_submit()
+
+    def _on_voice_error(self, message: str) -> None:
+        self.voice_button.setText("Voice")
+        self.voice_button.setEnabled(True)
+        self.append_log(f"[Voice 오류] {message}")
 
     def open_tracked_apps_dialog(self) -> None:
         dialog = TrackedAppsDialog(self.snapshot_actions, self)

@@ -35,7 +35,20 @@ class RuleBasedIntentParser:
                 url = f"https://{url}"
             return Intent(intent="open_url", params={"url": url}, raw_text=text)
 
+        if self._is_summarize(lowered, normalized):
+            return Intent(intent="summarize", raw_text=text)
+
         return Intent(intent="unknown", raw_text=text)
+
+    def _is_summarize(self, lowered: str, normalized: str) -> bool:
+        return (
+            "summarize" in lowered
+            or "summary" in lowered
+            or "요약" in normalized
+            or "뭐 하고 있었" in normalized
+            or "뭐하고 있었" in normalized
+            or "어제 뭐 했" in normalized
+        )
 
     def _is_restore_snapshot(self, lowered: str, normalized: str) -> bool:
         return (

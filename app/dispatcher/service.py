@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from app.actions.browser import BrowserActionService
+from app.actions.llm import LLMActionService
 from app.actions.snapshots import SnapshotActionService
 from app.actions.system import SystemActionService
 from app.db.sqlite import SnapshotRepository
@@ -12,6 +13,7 @@ class ActionDispatcher:
         self.system_actions = SystemActionService()
         self.browser_actions = BrowserActionService()
         self.snapshot_actions = SnapshotActionService(repository)
+        self.llm_actions = LLMActionService()
         self.repository = repository
 
     def dispatch(self, intent: Intent) -> ActionResult:
@@ -28,4 +30,9 @@ class ActionDispatcher:
             if latest is None:
                 return ActionResult(success=False, message="No snapshots are available yet.")
             return self.browser_actions.restore_snapshot_urls(latest)
+        if intent.intent == "summarize":
+            snapshots = self.repository.get_recent_snapshots(n=3)
+            if not snapshots:
+                return ActionResult(success=False, message="저장된 스냅샷이 없습니다.")
+            return self.llm_actions.summarize_recent_snapshots(snapshots)
         return ActionResult(success=False, message=f"Unknown intent: {intent.raw_text}")
