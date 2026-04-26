@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from urllib.parse import quote_plus
 
 from app.models import Intent
 
@@ -45,6 +46,10 @@ class RuleBasedIntentParser:
         open_app_intent = self._try_open_app(normalized)
         if open_app_intent is not None:
             return open_app_intent
+
+        search_intent = self._try_search(normalized)
+        if search_intent is not None:
+            return search_intent
 
         return Intent(intent="unknown", raw_text=text)
 
@@ -124,3 +129,38 @@ class RuleBasedIntentParser:
                 if "켜" in normalized or "열어" in normalized or "실행" in normalized or "open" in lowered:
                     return Intent(intent="open_app", params={"app": app}, raw_text=normalized)
         return None
+
+    _SEARCH_TRIGGER = re.compile(r"검색해줘|검색해|검색|찾아줘|찾아봐|search")
+
+    _SEARCH_SITES: list[tuple[tuple[str, ...], str, str]] = [
+        (("유튜브", "youtube"),  "youtube", "https://www.youtube.com/results?search_query={q}"),
+        (("네이버", "naver"),    "naver",   "https://search.naver.com/search.naver?query={q}"),
+        (("구글", "google"),     "google",  "https://www.google.com/search?q={q}"),
+    ]
+
+    _STRIP_WORDS = re.compile(
+        r"유튜브에서|유튜브|youtube에서|youtube"
+        r"|네이버에서|네이버|naver에서|naver"
+        r"|구글에서|구글|google에서|google"
+        r"|검색해줘|검색해|검색|찾아줘|찾아봐|search"
+        r"|에서",
+        re.IGNORECASE,
+    )
+
+    def _try_search(self, normalized: str) -> Intent | None:
+        if not self._SEARCH_TRIGGER.search(normalized):
+            return None
+
+        lowered = normalized.lower()
+        search_url_template = "https://www.google.com/search?q={q}"
+        for keywords, _name, template in self._SEARCH_SITES:
+            if any(kw in lowered for kw in keywords):
+                search_url_template = template
+                break
+
+        query = self._STRIP_WORDS.sub("", normalized).strip()
+        if not query:
+            return None
+
+        url = search_url_template.format(q=quote_plus(query))
+        return Intent(intent="open_url", params={"url": url}, raw_text=normalized)

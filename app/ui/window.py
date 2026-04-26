@@ -42,8 +42,7 @@ class VoiceWorker(QThread):
     def run(self) -> None:
         try:
             from app.actions.voice import record_and_transcribe
-            self.status.emit("녹음 중... (5s)")
-            text = record_and_transcribe()
+            text = record_and_transcribe(on_status=self.status.emit)
             self.finished.emit(text)
         except Exception as exc:
             self.error.emit(str(exc))
