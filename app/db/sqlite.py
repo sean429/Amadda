@@ -69,6 +69,8 @@ class SnapshotRepository:
                 connection.execute("ALTER TABLE snapshot_items ADD COLUMN process_name TEXT")
             if "executable_path" not in existing_columns:
                 connection.execute("ALTER TABLE snapshot_items ADD COLUMN executable_path TEXT")
+            if "path" not in existing_columns:
+                connection.execute("ALTER TABLE snapshot_items ADD COLUMN path TEXT")
             connection.commit()
 
     def list_tracked_processes(self) -> list[TrackedProcess]:
@@ -132,12 +134,13 @@ class SnapshotRepository:
                     app_name,
                     title,
                     url,
+                    path,
                     item_type,
                     process_name,
                     executable_path,
                     created_at
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 [
                     (
@@ -145,6 +148,7 @@ class SnapshotRepository:
                         item.app_name,
                         item.title,
                         item.url,
+                        item.path,
                         item.item_type,
                         item.process_name,
                         item.executable_path,
@@ -193,7 +197,7 @@ class SnapshotRepository:
             placeholders = ",".join("?" * len(snapshot_ids))
             item_rows = connection.execute(
                 f"""
-                SELECT snapshot_id, app_name, title, url, item_type,
+                SELECT snapshot_id, app_name, title, url, path, item_type,
                        process_name, executable_path, created_at
                 FROM snapshot_items
                 WHERE snapshot_id IN ({placeholders})
@@ -209,6 +213,7 @@ class SnapshotRepository:
                     app_name=row["app_name"],
                     title=row["title"],
                     url=row["url"],
+                    path=row["path"],
                     item_type=row["item_type"],
                     process_name=row["process_name"],
                     executable_path=row["executable_path"],
@@ -229,7 +234,7 @@ class SnapshotRepository:
         with self.connect() as connection:
             rows = connection.execute(
                 """
-                SELECT si.app_name, si.title, si.url, si.item_type,
+                SELECT si.app_name, si.title, si.url, si.path, si.item_type,
                        si.process_name, si.executable_path, si.created_at
                 FROM snapshot_items si
                 INNER JOIN (
@@ -248,6 +253,7 @@ class SnapshotRepository:
                 app_name=row["app_name"],
                 title=row["title"],
                 url=row["url"],
+                path=row["path"],
                 item_type=row["item_type"],
                 process_name=row["process_name"],
                 executable_path=row["executable_path"],
@@ -266,7 +272,7 @@ class SnapshotRepository:
 
             item_rows = connection.execute(
                 """
-                SELECT app_name, title, url, item_type, process_name, executable_path, created_at
+                SELECT app_name, title, url, path, item_type, process_name, executable_path, created_at
                 FROM snapshot_items
                 WHERE snapshot_id = ?
                 ORDER BY id ASC
@@ -279,6 +285,7 @@ class SnapshotRepository:
                 app_name=row["app_name"],
                 title=row["title"],
                 url=row["url"],
+                path=row["path"],
                 item_type=row["item_type"],
                 process_name=row["process_name"],
                 executable_path=row["executable_path"],

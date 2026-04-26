@@ -9,7 +9,8 @@ from typing import Any
 class SnapshotItem:
     app_name: str
     title: str
-    url: str | None = None
+    url: str | None = None          # 브라우저 탭 URL 전용
+    path: str | None = None         # 로컬 앱 컨텍스트 경로 (VS Code workspace, Word 문서 등)
     item_type: str = "application"
     process_name: str | None = None
     executable_path: str | None = None

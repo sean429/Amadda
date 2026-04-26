@@ -35,4 +35,6 @@ class ActionDispatcher:
             if not snapshots:
                 return ActionResult(success=False, message="저장된 스냅샷이 없습니다.")
             return self.llm_actions.summarize_recent_snapshots(snapshots)
+        if intent.intent == "open_app":
+            return self.system_actions.launch_app(intent.params["app"])
         return ActionResult(success=False, message=f"Unknown intent: {intent.raw_text}")

@@ -38,3 +38,24 @@ class SystemActionService:
         except Exception as exc:
             return ActionResult(success=False, message=f"Shutdown failed: {exc}")
         return ActionResult(success=True, message="System shutdown command issued.")
+
+    APP_COMMANDS: dict[str, list[str]] = {
+        "word": ["cmd", "/c", "start", "", "winword"],
+        "excel": ["cmd", "/c", "start", "", "excel"],
+        "powerpoint": ["cmd", "/c", "start", "", "powerpnt"],
+        "notepad": ["notepad.exe"],
+        "cmd": ["cmd", "/c", "start", "cmd"],
+        "powershell": ["cmd", "/c", "start", "", "powershell"],
+        "explorer": ["explorer.exe"],
+        "vscode": ["cmd", "/c", "start", "", "code"],
+    }
+
+    def launch_app(self, app: str) -> ActionResult:
+        command = self.APP_COMMANDS.get(app.lower())
+        if command is None:
+            return ActionResult(success=False, message=f"알 수 없는 앱입니다: {app}")
+        try:
+            subprocess.Popen(command, shell=False)
+        except Exception as exc:
+            return ActionResult(success=False, message=f"앱 실행 실패: {exc}")
+        return ActionResult(success=True, message=f"{app} 실행 명령을 전송했습니다.")

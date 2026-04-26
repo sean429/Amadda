@@ -11,8 +11,11 @@ def _format_snapshots_for_prompt(snapshots: list[SnapshotRecord]) -> str:
     for snapshot in snapshots:
         for item in snapshot.items:
             if item.item_type == "window":
-                if item.title and item.title not in windows:
-                    windows.append(item.title)
+                entry = item.title
+                if item.path:
+                    entry = f"{item.title} (경로: {item.path})"
+                if entry and entry not in windows:
+                    windows.append(entry)
             elif item.item_type == "browser_tab":
                 entry = f"{item.title} ({item.url})" if item.url else (item.title or item.url or "")
                 if entry and entry not in tabs:

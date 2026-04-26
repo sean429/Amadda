@@ -1,13 +1,16 @@
 from __future__ import annotations
 
 import ctypes
+import json
 import os
+import re
 import subprocess
 from csv import reader
 from ctypes import wintypes
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
+from urllib.parse import unquote
 
 try:
     import psutil
@@ -15,6 +18,54 @@ except ImportError:  # pragma: no cover - dependency availability varies by mach
     psutil = None
 
 from app.models import RunningProcess, SnapshotItem, TrackedProcess
+
+
+def _load_vscode_workspace_paths() -> dict[str, str]:
+    """VS Code storage.json에서 폴더명 → 실제 경로 매핑을 반환한다."""
+    storage_path = Path(os.environ.get("APPDATA", "")) / "Code" / "User" / "globalStorage" / "storage.json"
+    if not storage_path.exists():
+        return {}
+    try:
+        with open(storage_path, encoding="utf-8") as f:
+            data = json.load(f)
+        folders = data.get("backupWorkspaces", {}).get("folders", [])
+        result: dict[str, str] = {}
+        for folder in folders:
+            uri = folder.get("folderUri", "")
+            if not uri.startswith("file:///"):
+                continue
+            decoded = unquote(uri[len("file:///"):]).replace("/", "\\")
+            folder_name = Path(decoded).name
+            result[folder_name.lower()] = decoded
+        return result
+    except Exception:
+        return {}
+
+
+def _parse_vscode_title(title: str) -> tuple[str, str] | None:
+    """'파일명 - 프로젝트명 - Visual Studio Code' 형식에서 (파일명, 프로젝트명)을 반환한다."""
+    suffix = " - Visual Studio Code"
+    if not title.endswith(suffix):
+        return None
+    body = title[: -len(suffix)]
+    # 앞에 ● (unsaved indicator) 제거
+    body = re.sub(r"^[●•]\s*", "", body)
+    parts = [p.strip() for p in body.split(" - ")]
+    if len(parts) >= 2:
+        return parts[-2], parts[-1]  # 파일명, 프로젝트명 (역순에서)
+    if len(parts) == 1:
+        return "", parts[0]
+    return None
+
+
+def _parse_word_title(title: str) -> str | None:
+    """'문서명 - Word' 또는 '문서명 - Microsoft Word' 형식에서 문서명을 반환한다."""
+    for suffix in (" - Microsoft Word", " - Word"):
+        if title.endswith(suffix):
+            doc = title[: -len(suffix)].strip()
+            doc = re.sub(r"\s*\[.*?\]", "", doc).strip()
+            return doc if doc else None
+    return None
 
 
 @dataclass(slots=True)
@@ -187,6 +238,8 @@ class WindowsSnapshotCollector(SnapshotCollector):
                     )
                 )
 
+        self._enrich_app_context(items, logs)
+
         window_item_count = sum(1 for item in items if item.item_type == "window")
         logs.append(f"Ignored {ignored_process_count} process(es) by filter.")
         logs.append(f"Matched {tracked_match_count} tracked process(es).")
@@ -194,10 +247,37 @@ class WindowsSnapshotCollector(SnapshotCollector):
         logs.append(
             f"Collected {window_item_count} visible window title(s) across {process_with_windows} process(es)."
         )
-        logs.append(
-            f"Collected executable paths for {sum(1 for item in items if item.item_type == 'process' and item.executable_path)} process item(s)."
-        )
         return SnapshotCollectionResult(items=items, logs=logs)
+
+    def _enrich_app_context(self, items: list[SnapshotItem], logs: list[str]) -> None:
+        """VS Code / Word 창 아이템에 workspace/문서 경로를 보강한다."""
+        vscode_paths = _load_vscode_workspace_paths()
+        enriched = 0
+
+        for item in items:
+            if item.item_type != "window":
+                continue
+
+            if item.process_name in ("Code.exe", "code.exe"):
+                parsed = _parse_vscode_title(item.title)
+                if parsed:
+                    file_name, project_name = parsed
+                    workspace_path = vscode_paths.get(project_name.lower())
+                    if workspace_path:
+                        item.path = workspace_path
+                        enriched += 1
+                    elif project_name:
+                        item.path = project_name
+                        enriched += 1
+
+            elif item.process_name in ("WINWORD.EXE", "winword.exe"):
+                doc_name = _parse_word_title(item.title)
+                if doc_name:
+                    item.path = doc_name
+                    enriched += 1
+
+        if enriched:
+            logs.append(f"Enriched {enriched} app context item(s) with workspace/document info.")
 
     def list_running_processes(self) -> list[RunningProcess]:
         logs: list[str] = []

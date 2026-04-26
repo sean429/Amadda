@@ -81,6 +81,7 @@ def create_app() -> FastAPI:
                         "app_name": item.app_name,
                         "title": item.title,
                         "url": item.url,
+                        "path": item.path,
                         "item_type": item.item_type,
                         "process_name": item.process_name,
                         "executable_path": item.executable_path,

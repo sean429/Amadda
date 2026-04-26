@@ -6,10 +6,12 @@
 
 Amadda는 사용자의 작업 맥락을 저장하고, 나중에 빠르게 다시 진입할 수 있도록 돕는 로컬 중심 컨텍스트 복구 도구다.
 
-현재 구현 범위는 아래 두 축으로 나뉜다.
+현재 구현 범위는 아래 네 축으로 나뉜다.
 
 - 로컬 Windows 컨텍스트 수집
-- Chrome extension 기반 브라우저 탭 컨텍스트 수집
+- Chrome extension 기반 브라우저 탭 컨텍스트 수집 (15분 자동 + 수동)
+- LLM 기반 작업 요약 (Gemini API)
+- 음성 명령 입력 (로컬 Whisper)
 
 ## 주요 구성 요소
 
@@ -20,8 +22,10 @@ Amadda는 사용자의 작업 맥락을 저장하고, 나중에 빠르게 다시
 역할:
 
 - 텍스트 명령 입력
+- 음성 명령 입력 (Voice 버튼 → Whisper 변환 → 자동 실행)
 - 실행 결과 및 로그 출력
 - 확인이 필요한 액션에 대한 사용자 승인
+- Tracked Apps 다이얼로그 (앱 아이콘 포함)
 
 ### 2. Intent Parser
 
@@ -78,6 +82,26 @@ Amadda는 사용자의 작업 맥락을 저장하고, 나중에 빠르게 다시
 
 - sleep, shutdown 같은 시스템 액션 처리
 
+#### LLM actions
+
+- [llm.py](C:\graduation\Amadda\app\actions\llm.py)
+
+역할:
+
+- 최근 3개 스냅샷의 window/browser_tab 항목을 통합
+- Gemini API(`gemini-2.5-flash-lite`)로 작업 요약 생성
+- `GEMINI_API_KEY` 환경변수 필요 (Google AI Studio 무료 발급)
+
+#### Voice actions
+
+- [voice.py](C:\graduation\Amadda\app\actions\voice.py)
+
+역할:
+
+- sounddevice로 5초 마이크 녹음
+- 로컬 Whisper(`small` 모델)로 한국어 음성 → 텍스트 변환
+- 완전 오프라인, API 비용 없음
+
 ### 6. FastAPI Local Backend
 
 - [server.py](C:\graduation\Amadda\app\api\server.py)
@@ -111,8 +135,30 @@ User command -> Parser -> Dispatcher -> SnapshotActionService
 ### B. Browser snapshot flow
 
 ```text
-Chrome extension click -> service worker -> POST /browser/snapshot
+[15분 알람 또는 아이콘 클릭]
+Chrome service worker -> chrome.windows.getLastFocused -> POST /browser/snapshot
 -> FastAPI -> SnapshotRepository -> SQLite
+```
+
+### C. GUI unified snapshot flow
+
+```text
+User: save snapshot
+-> SnapshotActionService
+-> WindowsSnapshotCollector (process/window 수집, 서브프로세스 그룹화)
+-> get_latest_browser_tab_items (DB에서 최근 browser_tab 병합)
+-> chrome.exe 항목 제거 (browser_tab으로 대체)
+-> SnapshotRepository -> SQLite
+```
+
+### D. LLM 요약 flow
+
+```text
+User: 요약해줘 (텍스트 또는 음성)
+-> Parser -> Dispatcher
+-> get_recent_snapshots(n=3) (최근 3개 스냅샷 통합)
+-> _format_snapshots_for_prompt (window + browser_tab 중복 제거)
+-> Gemini API -> 작업 요약 텍스트 -> GUI 로그 출력
 ```
 
 ## Snapshot 저장 구조
@@ -146,10 +192,10 @@ Chrome extension click -> service worker -> POST /browser/snapshot
 
 ## 현재 한계
 
-- restore는 아직 부분적이다
-- 브라우저는 현재 Chrome current window만 수집한다
-- 앱별 고급 컨텍스트는 아직 부족하다
-- 프로세스 필터는 휴리스틱 기반이라 환경별 조정이 필요할 수 있다
+- restore는 URL 재오픈 수준에 머무름 (앱 재실행, 창 배치 복원 미구현)
+- 브라우저는 현재 Chrome만 지원
+- 앱별 고급 컨텍스트 미구현 (VS Code workspace path, Word 문서 경로 등)
+- 프로세스 필터는 휴리스틱 기반이라 환경별 조정이 필요할 수 있음
 
 ## 관련 문서
 

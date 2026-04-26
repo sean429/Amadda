@@ -38,6 +38,14 @@ class RuleBasedIntentParser:
         if self._is_summarize(lowered, normalized):
             return Intent(intent="summarize", raw_text=text)
 
+        open_url_intent = self._try_open_named_url(normalized)
+        if open_url_intent is not None:
+            return open_url_intent
+
+        open_app_intent = self._try_open_app(normalized)
+        if open_app_intent is not None:
+            return open_app_intent
+
         return Intent(intent="unknown", raw_text=text)
 
     def _is_summarize(self, lowered: str, normalized: str) -> bool:
@@ -78,3 +86,41 @@ class RuleBasedIntentParser:
 
     def _is_open_url(self, lowered: str, normalized: str) -> bool:
         return "open" in lowered or "링크 열어줘" in normalized or "열어줘" in normalized
+
+    # Named site shortcuts → open_url
+    _NAMED_URLS: list[tuple[tuple[str, ...], str]] = [
+        (("유튜브", "youtube"), "https://www.youtube.com"),
+        (("구글", "google"), "https://www.google.com"),
+        (("네이버", "naver"), "https://www.naver.com"),
+        (("카카오", "kakao"), "https://www.kakao.com"),
+        (("깃허브", "github"), "https://github.com"),
+        (("지메일", "gmail"), "https://mail.google.com"),
+    ]
+
+    def _try_open_named_url(self, normalized: str) -> Intent | None:
+        lowered = normalized.lower()
+        for keywords, url in self._NAMED_URLS:
+            if any(kw in lowered for kw in keywords):
+                if "켜" in normalized or "열어" in normalized or "open" in lowered:
+                    return Intent(intent="open_url", params={"url": url}, raw_text=normalized)
+        return None
+
+    # App launch shortcuts → open_app
+    _APP_KEYWORDS: list[tuple[tuple[str, ...], str]] = [
+        (("워드", "word"), "word"),
+        (("엑셀", "excel"), "excel"),
+        (("파워포인트", "powerpoint", "ppt"), "powerpoint"),
+        (("메모장", "notepad"), "notepad"),
+        (("커맨드", "cmd", "명령 프롬프트", "명령프롬프트"), "cmd"),
+        (("파워쉘", "파워셸", "powershell"), "powershell"),
+        (("탐색기", "파일 탐색기", "explorer"), "explorer"),
+        (("브이에스코드", "vscode", "vs code"), "vscode"),
+    ]
+
+    def _try_open_app(self, normalized: str) -> Intent | None:
+        lowered = normalized.lower()
+        for keywords, app in self._APP_KEYWORDS:
+            if any(kw in lowered for kw in keywords):
+                if "켜" in normalized or "열어" in normalized or "실행" in normalized or "open" in lowered:
+                    return Intent(intent="open_app", params={"app": app}, raw_text=normalized)
+        return None

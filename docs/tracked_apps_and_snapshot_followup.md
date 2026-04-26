@@ -1,6 +1,6 @@
 # Amadda Tracked Apps / Snapshot Follow-up
 
-기준 커밋: `0e2a687` `docs update`
+기준 커밋: 최신 작업 반영
 
 ## 지금까지 반영된 것
 
@@ -52,56 +52,91 @@
   - 15분마다 `sendSnapshot()` 자동 호출
   - 백엔드가 꺼져 있으면 조용히 실패 (콘솔 경고만)
   - 수동 클릭 기능과 배지 피드백은 그대로 유지
+- 버그 수정:
+  - `currentWindow: true` → `chrome.windows.getLastFocused({ windowTypes: ["normal"] })`로 변경
+  - DevTools/알람 컨텍스트에서 탭이 0개로 반환되는 문제 해결
+
+### 6. 서브 프로세스 중복 제거
+
+- 변경 파일: `app/actions/snapshot_collectors.py`
+- 기존 문제: `chrome.exe`, `Code.exe` 등은 서브 프로세스를 수십 개 띄워 동일 앱이 스냅샷에 수십 개 중복 저장됨
+- 수정 방식: `(process_name, executable_path)` 기준으로 그룹화
+  - 앱당 process 아이템 1개
+  - 고유한 창 제목마다 window 아이템 1개
+- 효과: 노이즈 항목 대폭 감소, 스냅샷 가독성 향상
+
+### 7. GUI snapshot + browser 상태 통합
+
+- 변경 파일: `app/actions/snapshots.py`, `app/db/sqlite.py`
+- 기존 문제: GUI `save snapshot`은 Windows 프로세스/창 정보만 저장, URL 없음
+- 수정 방식:
+  - `SnapshotRepository.get_latest_browser_tab_items()` 추가
+  - `save_snapshot()` 실행 시 DB의 최근 browser_tab 항목을 자동으로 병합
+  - browser_tab이 있을 경우 chrome.exe process/window 항목은 제외 (중복 방지)
+- 효과: 단일 스냅샷에 Windows 앱 컨텍스트 + 브라우저 URL이 함께 저장됨
+
+### 8. Tracked Apps 아이콘 표시
+
+- 변경 파일: `app/ui/window.py`
+- `QFileIconProvider`를 사용해 각 앱의 실행 파일에서 시스템 아이콘 추출
+- Process Name 열에 앱 아이콘 표시
+- 별도 의존성 없이 Qt 내장 기능만 사용
+
+### 9. LLM 기반 작업 요약 (Gemini API)
+
+- 추가 파일: `app/actions/llm.py`
+- 변경 파일: `app/intents/parser.py`, `app/dispatcher/service.py`, `app/config.py`, `requirements.txt`
+- 의존성: `google-genai` 패키지
+- 모델: `gemini-2.5-flash-lite` (무료 티어)
+- API 키: 환경변수 `GEMINI_API_KEY`로 주입 (Google AI Studio에서 무료 발급)
+- 동작 방식:
+  - 최근 3개 스냅샷의 window/browser_tab 항목을 중복 제거 후 통합
+  - Gemini에 컨텍스트 전달, 구체적인 파일명/탭 제목 언급하도록 프롬프트 설계
+  - 결과를 GUI 로그에 출력
+- 트리거 명령: `요약해줘`, `summarize`, `뭐하고 있었어` 등
+
+### 10. 음성 입력 (로컬 Whisper)
+
+- 추가 파일: `app/actions/voice.py`
+- 변경 파일: `app/ui/window.py`, `requirements.txt`
+- 의존성: `openai-whisper`, `sounddevice`
+- 모델: `whisper small` (첫 실행 시 자동 다운로드 ~140MB, 이후 캐시)
+- 동작 방식:
+  - GUI에 `Voice` 버튼 추가
+  - 클릭 시 5초간 마이크 녹음 (QThread로 UI 블로킹 없음)
+  - 녹음 완료 후 Whisper로 한국어 변환 (`language="ko"`, `fp16=False`)
+  - 변환된 텍스트를 입력창에 자동 입력 후 즉시 실행
+- 완전 오프라인 동작, API 비용 없음
 
 ## 현재 한계 / 아직 안 된 것
 
-### 1. GUI `save snapshot`에는 URL이 포함되지 않음
+### 1. 앱별 복구 컨텍스트 미구현
 
-- 현재 GUI 저장은 Windows 프로세스/윈도우 snapshot만 저장
-- 브라우저 URL은 Chrome extension이 별도로 `/browser/snapshot`으로 전송할 때만 저장됨
+- VS Code workspace path, Word 문서 경로 등 앱 내부 상태는 아직 수집 안 됨
+- 현재는 창 제목 수준에서 멈춤
 
-### 2. 기존 데이터 즉시 정리 미구현
+### 2. restore가 URL 재오픈 중심
 
-- 보존 개수 제한은 "앞으로 저장되는 흐름"에 적용됨
-- 이미 쌓인 데이터를 즉시 줄이는 별도 정리 액션은 아직 없음
+- `restore latest snapshot` 명령은 브라우저 URL만 다시 열음
+- Windows 앱 재실행, 창 배치 복원 등은 미구현
 
-### 4. snapshot 단위와 snapshot item 단위가 분리되어 있음
+### 3. 스냅샷 단위와 아이템 단위 분리
 
-- 현재 보존 정책은 `snapshot` 개수를 기준으로 동작
-- 실제 DB 증가량은 `snapshot_items` 수에 더 크게 영향받을 수 있음
+- 보존 정책은 snapshot 개수 기준
+- 실제 DB 증가량은 snapshot_items 수에 더 크게 영향받을 수 있음
 
-## 다음 작업 제안
+## 다음 작업 후보
 
-### 우선순위 1. GUI snapshot과 browser 상태 연결
+### 앱별 복구 컨텍스트 확장
 
-- GUI `save snapshot` 시 최근 browser 상태를 함께 저장하도록 구조 정리
-- 후보 방식:
-  - 최근 browser 상태 캐시를 합쳐서 저장
-  - 또는 GUI가 browser 상태 동기화를 요청한 뒤 저장
-
-### 우선순위 3. 기존 데이터 정리 액션 추가
-
-- 일회성 DB 정리 명령 또는 버튼 추가
-- 예:
-  - 최신 N개만 남기고 즉시 삭제
-  - browser snapshot만 따로 정리
-
-### 우선순위 4. 앱별 복구 컨텍스트 확장
-
-- `Explorer`는 제외
-- 후보 앱:
-  - VS Code
-  - Word
-- 목표:
-  - 단순 프로세스 이름이 아니라 실제 복구 가능한 컨텍스트 저장
-- 예:
-  - VS Code: workspace path, file path
-  - Word: document path
+- VS Code: workspace path, 현재 열린 파일 경로
+- Word: 문서 파일 경로
+- 목표: 단순 창 제목이 아니라 실제 복구 가능한 컨텍스트 저장
 
 ## 커밋 정리 시 유의사항
 
-- `__pycache__` 변경분은 커밋에서 제외하는 것이 좋음
-- `data/amadda.db`는 로컬 상태 파일이므로 커밋에서 제외하는 것이 좋음
+- `__pycache__` 변경분은 커밋에서 제외
+- `data/amadda.db`는 로컬 상태 파일이므로 커밋에서 제외
 - 기능 코드 위주 대상:
   - `app/`
   - `browser_extension/`
