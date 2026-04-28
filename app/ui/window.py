@@ -5,7 +5,7 @@ import threading
 from collections import defaultdict
 
 import uvicorn
-from PySide6.QtCore import QFileInfo, QThread, Qt, Signal
+from PySide6.QtCore import QFileInfo, QThread, QTimer, Qt, Signal
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QApplication,
@@ -28,8 +28,8 @@ from PySide6.QtWidgets import (
 
 from app.actions.snapshots import SnapshotActionService
 from app.api.server import create_app
-from app.config import API_HOST, APP_NAME
-from app.models import CommandResponse, RunningProcess, TrackedProcess
+from app.config import API_HOST, APP_NAME, AUTO_SNAPSHOT_INTERVAL_MINUTES, SNAPSHOT_RETENTION_MAX
+from app.models import CommandResponse, RunningProcess, SnapshotRecord, TrackedProcess
 from app.runtime import select_api_port
 from app.services import dispatcher, parser, permission_service, snapshot_actions
 
@@ -237,14 +237,75 @@ class TrackedAppsDialog(QDialog):
         return tracked_processes
 
 
+class SnapshotHistoryDialog(QDialog):
+    def __init__(self, snapshot_service: SnapshotActionService, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.snapshot_service = snapshot_service
+        self.snapshots: list[SnapshotRecord] = []
+        self.setWindowTitle("Snapshot History")
+        self.resize(680, 420)
+        self._build_ui()
+        self._load()
+
+    def _build_ui(self) -> None:
+        layout = QVBoxLayout(self)
+
+        self.table = QTableWidget(self)
+        self.table.setColumnCount(4)
+        self.table.setHorizontalHeaderLabels(["#", "Time", "Windows", "Browser Tabs"])
+        self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.table.setSelectionMode(QAbstractItemView.SingleSelection)
+        self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.table.verticalHeader().setVisible(False)
+        self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
+        self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
+        self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeToContents)
+        self.table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeToContents)
+
+        self.restore_button = QPushButton("Restore Selected", self)
+        self.restore_button.clicked.connect(self._restore_selected)
+        close_button = QPushButton("Close", self)
+        close_button.clicked.connect(self.accept)
+
+        button_row = QHBoxLayout()
+        button_row.addWidget(self.restore_button)
+        button_row.addStretch()
+        button_row.addWidget(close_button)
+
+        layout.addWidget(self.table)
+        layout.addLayout(button_row)
+
+    def _load(self) -> None:
+        self.snapshots = self.snapshot_service.get_recent_snapshots(n=SNAPSHOT_RETENTION_MAX)
+        self.table.setRowCount(len(self.snapshots))
+        for row, snapshot in enumerate(self.snapshots):
+            window_count = sum(1 for item in snapshot.items if item.item_type == "window")
+            tab_count = sum(1 for item in snapshot.items if item.item_type == "browser_tab")
+            self.table.setItem(row, 0, QTableWidgetItem(str(snapshot.snapshot_id)))
+            self.table.setItem(row, 1, QTableWidgetItem(snapshot.created_at.strftime("%Y-%m-%d %H:%M:%S")))
+            self.table.setItem(row, 2, QTableWidgetItem(str(window_count)))
+            self.table.setItem(row, 3, QTableWidgetItem(str(tab_count)))
+        self.table.resizeRowsToContents()
+
+    def _restore_selected(self) -> None:
+        row = self.table.currentRow()
+        if row < 0:
+            QMessageBox.warning(self, "선택 없음", "복구할 스냅샷을 선택해주세요.")
+            return
+        snapshot = self.snapshots[row]
+        result = dispatcher.browser_actions.restore_snapshot(snapshot)
+        QMessageBox.information(self, "복구 결과", result.message)
+
+
 class MainWindow(QMainWindow):
     def __init__(self, api_port: int) -> None:
         super().__init__()
         self.api_port = api_port
         self.snapshot_actions = snapshot_actions
         self.setWindowTitle(f"{APP_NAME} MVP")
-        self.resize(760, 480)
+        self.resize(900, 480)
         self._build_ui()
+        self._setup_auto_snapshot()
 
     def _build_ui(self) -> None:
         container = QWidget(self)
@@ -271,11 +332,19 @@ class MainWindow(QMainWindow):
         tracked_apps_button = QPushButton("Tracked Apps", self)
         tracked_apps_button.clicked.connect(self.open_tracked_apps_dialog)
 
+        history_button = QPushButton("History", self)
+        history_button.clicked.connect(self.open_history_dialog)
+
+        self.auto_button = QPushButton("Auto: OFF", self)
+        self.auto_button.clicked.connect(self._toggle_auto_snapshot)
+
         input_row = QHBoxLayout()
         input_row.addWidget(self.input)
         input_row.addWidget(submit_button)
         input_row.addWidget(self.voice_button)
         input_row.addWidget(tracked_apps_button)
+        input_row.addWidget(history_button)
+        input_row.addWidget(self.auto_button)
 
         self.log = QTextEdit(self)
         self.log.setReadOnly(True)
@@ -312,6 +381,34 @@ class MainWindow(QMainWindow):
         self.voice_button.setText("Voice")
         self.voice_button.setEnabled(True)
         self.append_log(f"[Voice 오류] {message}")
+
+    def _setup_auto_snapshot(self) -> None:
+        self._auto_snapshot_timer = QTimer(self)
+        self._auto_snapshot_timer.setInterval(AUTO_SNAPSHOT_INTERVAL_MINUTES * 60 * 1000)
+        self._auto_snapshot_timer.timeout.connect(self._run_auto_snapshot)
+        self._auto_snapshot_timer.start()
+        self.auto_button.setText(f"Auto: ON ({AUTO_SNAPSHOT_INTERVAL_MINUTES}m)")
+        self.auto_button.setStyleSheet("background-color: #4CAF50; color: white;")
+
+    def _toggle_auto_snapshot(self) -> None:
+        if self._auto_snapshot_timer.isActive():
+            self._auto_snapshot_timer.stop()
+            self.auto_button.setText("Auto: OFF")
+            self.auto_button.setStyleSheet("")
+            self.append_log("Auto-snapshot disabled.")
+        else:
+            self._auto_snapshot_timer.start()
+            self.auto_button.setText(f"Auto: ON ({AUTO_SNAPSHOT_INTERVAL_MINUTES}m)")
+            self.auto_button.setStyleSheet("background-color: #4CAF50; color: white;")
+            self.append_log(f"Auto-snapshot enabled (every {AUTO_SNAPSHOT_INTERVAL_MINUTES} min).")
+
+    def _run_auto_snapshot(self) -> None:
+        result = self.snapshot_actions.save_snapshot()
+        self.append_log(f"[Auto] {result.message}")
+
+    def open_history_dialog(self) -> None:
+        dialog = SnapshotHistoryDialog(self.snapshot_actions, self)
+        dialog.exec()
 
     def open_tracked_apps_dialog(self) -> None:
         dialog = TrackedAppsDialog(self.snapshot_actions, self)

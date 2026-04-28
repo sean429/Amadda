@@ -29,7 +29,7 @@ class ActionDispatcher:
             latest = self.repository.get_latest_snapshot()
             if latest is None:
                 return ActionResult(success=False, message="No snapshots are available yet.")
-            return self.browser_actions.restore_snapshot_urls(latest)
+            return self.browser_actions.restore_snapshot(latest)
         if intent.intent == "summarize":
             snapshots = self.repository.get_recent_snapshots(n=3)
             if not snapshots:

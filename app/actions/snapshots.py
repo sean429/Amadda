@@ -32,6 +32,9 @@ class SnapshotActionService:
     def list_tracked_processes(self) -> list[TrackedProcess]:
         return self.repository.list_tracked_processes()
 
+    def get_recent_snapshots(self, n: int = 50) -> list[SnapshotRecord]:
+        return self.repository.get_recent_snapshots(n)
+
     def save_snapshot(self) -> ActionResult:
         collection = self._build_collector().collect()
         items = collection.items
