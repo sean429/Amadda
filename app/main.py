@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import sys
 
-from app.ui.window import run_desktop_app
+from app.ui.webview import run_desktop_app
 
 
 def main() -> int:

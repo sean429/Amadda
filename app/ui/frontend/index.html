@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Amadda</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+<div id="app">
+
+  <!-- Header -->
+  <header>
+    <div class="logo">
+      <div class="logo-dot"></div>
+      <span class="logo-text">Amadda</span>
+    </div>
+
+    <button class="menu-btn" id="menu-btn" aria-label="Menu">
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+        <rect x="2" y="5"  width="16" height="1.8" rx="0.9"/>
+        <rect x="2" y="9.1" width="16" height="1.8" rx="0.9"/>
+        <rect x="2" y="13.2" width="16" height="1.8" rx="0.9"/>
+      </svg>
+    </button>
+  </header>
+
+  <!-- Hamburger dropdown -->
+  <div class="dropdown-overlay" id="dropdown-overlay">
+    <div class="dropdown-panel" id="dropdown-panel">
+      <div class="dropdown-section-title">스냅샷</div>
+      <div class="dropdown-item" id="menu-save-snapshot">
+        <svg width="15" height="15" viewBox="0 0 20 20" fill="currentColor"><path d="M4 2h9l4 4v12a1 1 0 01-1 1H4a1 1 0 01-1-1V3a1 1 0 011-1zm0 1v14h12V6.41L13.59 4H4zm5 9.5l3.5-3.5-1-1L9 11.09 7.5 9.59l-1 1L9 13.5z"/></svg>
+        스냅샷 저장
+      </div>
+      <div class="dropdown-item" id="menu-restore-snapshot">
+        <svg width="15" height="15" viewBox="0 0 20 20" fill="currentColor"><path d="M10 2a8 8 0 110 16A8 8 0 0110 2zm0 1.5a6.5 6.5 0 100 13 6.5 6.5 0 000-13zm.75 3v5.25l4.5 2.25-.75 1.5-5.25-2.63V6.5h1.5z"/></svg>
+        최근 스냅샷 복구
+      </div>
+      <div class="dropdown-item" id="menu-history">
+        <svg width="15" height="15" viewBox="0 0 20 20" fill="currentColor"><path d="M4 4h12v2H4V4zm0 4h12v2H4V8zm0 4h7v2H4v-2z"/></svg>
+        스냅샷 히스토리
+      </div>
+      <div class="dropdown-divider"></div>
+      <div class="dropdown-section-title">설정</div>
+      <div class="dropdown-item" id="menu-tracked-apps">
+        <svg width="15" height="15" viewBox="0 0 20 20" fill="currentColor"><path d="M2 5a3 3 0 013-3h10a3 3 0 013 3v10a3 3 0 01-3 3H5a3 3 0 01-3-3V5zm3-1a1 1 0 00-1 1v10a1 1 0 001 1h10a1 1 0 001-1V5a1 1 0 00-1-1H5z"/></svg>
+        Tracked Apps
+      </div>
+      <div class="dropdown-item" id="menu-auto-snapshot">
+        <svg width="15" height="15" viewBox="0 0 20 20" fill="currentColor"><circle cx="10" cy="10" r="7" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M10 6v4l3 2"/></svg>
+        <span>자동 스냅샷</span>
+        <span class="status-badge" id="auto-snapshot-status" style="margin-left:auto">ON</span>
+      </div>
+      <div class="dropdown-divider"></div>
+      <div class="dropdown-item" id="menu-summarize">
+        <svg width="15" height="15" viewBox="0 0 20 20" fill="currentColor"><path d="M4 5h12v1.5H4V5zm0 4h12v1.5H4V9zm0 4h7v1.5H4V13z"/></svg>
+        작업 요약 (AI)
+      </div>
+    </div>
+  </div>
+
+  <!-- Messages feed -->
+  <div id="feed"></div>
+
+  <!-- Input bar (fixed bottom) -->
+  <div id="input-bar">
+    <input id="text-input" type="text" placeholder="명령어를 입력하세요..." autocomplete="off" />
+    <button class="send-btn" id="send-btn" title="전송">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="12" y1="20" x2="12" y2="4"/>
+        <polyline points="6 10 12 4 18 10"/>
+      </svg>
+    </button>
+    <button class="mic-btn" id="mic-btn" title="음성 명령">
+      <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
+        <rect x="7" y="2" width="6" height="9" rx="3"/>
+        <path d="M4 10a6 6 0 0012 0M10 17v2M7 19h6" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+      </svg>
+    </button>
+  </div>
+
+</div>
+
+<!-- Snapshot History Panel -->
+<div class="panel-overlay" id="history-overlay">
+  <div class="panel">
+    <div class="panel-header">
+      <span class="panel-title">스냅샷 히스토리</span>
+      <button class="panel-close" id="history-close">✕</button>
+    </div>
+    <div class="panel-body" id="history-body">
+      <div style="color:var(--text-muted);font-size:13px;">불러오는 중...</div>
+    </div>
+  </div>
+</div>
+
+<!-- Tracked Apps Panel -->
+<div class="panel-overlay" id="tracked-overlay">
+  <div class="panel">
+    <div class="panel-header">
+      <span class="panel-title">Tracked Apps</span>
+      <button class="panel-close" id="tracked-close">✕</button>
+    </div>
+    <div class="panel-body">
+      <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">
+        스냅샷에 포함할 프로세스 이름을 등록하세요. (예: notepad.exe, Code.exe)
+      </div>
+      <div class="tracked-list" id="tracked-list"></div>
+      <div class="tracked-input-row">
+        <input class="tracked-input" id="tracked-input" placeholder="process_name.exe" />
+        <button class="tracked-add-btn" id="tracked-add">추가</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="/static/app.js"></script>
+</body>
+</html>

@@ -16,7 +16,17 @@ class ActionDispatcher:
         self.llm_actions = LLMActionService()
         self.repository = repository
 
+    _INTRO = (
+        "저는 **아맞다**입니다. 당신 곁에서 작업 흐름을 조용히 기억하는 AI 비서예요.\n"
+        "자리를 비운 사이 무엇을 하고 있었는지 잊으셨나요? 걱정 마세요, 제가 다 기억하고 있을게요.\n"
+        "브라우저 탭, 열어둔 앱, 작업 중이던 파일까지 — 명령 한 마디면 지금 하던 일로 바로 돌아갈 수 있어요.\n"
+        "음성으로 말씀하셔도 되고, 텍스트로 입력하셔도 돼요.\n"
+        "아, 맞다 — 하고 생각나실 때 언제든 불러주세요."
+    )
+
     def dispatch(self, intent: Intent) -> ActionResult:
+        if intent.intent == "introduce":
+            return ActionResult(success=True, message=self._INTRO)
         if intent.intent == "sleep":
             return self.system_actions.sleep()
         if intent.intent == "shutdown":

@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>Amadda — 글씨 색 비교</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      /* 실제 앱과 동일한 배경 */
+      background:
+        radial-gradient(ellipse 75% 65% at 12% 18%,  #82c4d8 0%, transparent 55%),
+        radial-gradient(ellipse 60% 55% at 86% 78%,  #3a88b8 0%, transparent 52%),
+        radial-gradient(ellipse 50% 48% at 70% 10%,  #a4d8ec 0%, transparent 50%),
+        radial-gradient(ellipse 48% 52% at 18% 82%,  #2e7098 0%, transparent 50%),
+        radial-gradient(ellipse 55% 42% at 52% 52%,  #5aaac4 0%, transparent 48%),
+        #2e6884;
+    }
+
+    .container {
+      display: flex;
+      width: 100%;
+      min-height: 100vh;
+    }
+
+    /* ── 공통 라벨 ── */
+    .label {
+      text-align: center;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 20px 0 12px;
+    }
+
+    /* ══════════════════════════════════
+       옵션 A — 어두운 글씨 + 밝은 패널
+    ══════════════════════════════════ */
+    .side-a {
+      flex: 1;
+      padding: 24px 20px;
+      border-right: 1px solid rgba(255,255,255,0.20);
+    }
+
+    .side-a .label { color: #0D3B47; text-shadow: none; }
+
+    .side-a .card {
+      background: rgba(255, 255, 255, 0.38);
+      backdrop-filter: blur(48px) brightness(1.05) saturate(1.4);
+      -webkit-backdrop-filter: blur(48px) brightness(1.05) saturate(1.4);
+      border: 1px solid rgba(255,255,255,0.60);
+      box-shadow:
+        inset 0 1.5px 0 rgba(255,255,255,0.75),
+        0 8px 32px rgba(0,0,0,0.12);
+      border-radius: 18px;
+      padding: 16px 18px;
+      margin-bottom: 12px;
+    }
+
+    /* 글씨 색 후보들 */
+    .a-v1 { color: #001F26; }
+    .a-v2 { color: #0D3B47; }
+    .a-v3 { color: #1B4F5A; }
+    .a-v4 { color: #2C3E50; }
+
+    .swatch {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .swatch-dot {
+      width: 14px; height: 14px;
+      border-radius: 50%;
+      border: 2px solid rgba(0,0,0,0.15);
+      flex-shrink: 0;
+    }
+    .swatch-text { font-size: 14px; font-weight: 500; }
+    .swatch-sub  { font-size: 11px; opacity: 0.65; margin-top: 1px; }
+    .hex { font-size: 10px; font-weight: 700; letter-spacing: 0.05em; opacity: 0.55; }
+
+    .sample-body {
+      font-size: 13px;
+      line-height: 1.65;
+      margin-top: 4px;
+    }
+    .sample-muted { opacity: 0.60; font-size: 11px; margin-top: 4px; }
+
+    .input-mock {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-radius: 28px;
+      padding: 8px 10px 8px 16px;
+      margin-top: 8px;
+      font-size: 13px;
+    }
+    .input-mock span { flex: 1; opacity: 0.50; }
+    .btn-mock {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px;
+    }
+
+    /* ── 옵션 A 입력창 ── */
+    .side-a .input-mock {
+      background: rgba(255,255,255,0.30);
+      backdrop-filter: blur(30px);
+      border: 1px solid rgba(255,255,255,0.55);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.70);
+    }
+    .side-a .btn-send { background: #0D3B47; color: #fff; }
+    .side-a .btn-mic  { background: rgba(255,255,255,0.50); color: #0D3B47; border: 1px solid rgba(0,0,0,0.08); }
+
+
+    /* ══════════════════════════════════
+       옵션 B — 밝은 글씨 + text-shadow
+    ══════════════════════════════════ */
+    .side-b {
+      flex: 1;
+      padding: 24px 20px;
+    }
+
+    .side-b .label {
+      color: #E8F4F8;
+      text-shadow: 0 1px 8px rgba(0,0,0,0.35);
+    }
+
+    .side-b .card {
+      background: rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(48px) brightness(1.08) saturate(1.6);
+      -webkit-backdrop-filter: blur(48px) brightness(1.08) saturate(1.6);
+      border: 1px solid rgba(255,255,255,0.28);
+      box-shadow:
+        inset 0 1.5px 0 rgba(255,255,255,0.55),
+        0 8px 32px rgba(0,0,0,0.14);
+      border-radius: 18px;
+      padding: 16px 18px;
+      margin-bottom: 12px;
+    }
+
+    .b-v1 { color: #FFFFFF;  text-shadow: 0 1px 8px rgba(0,0,0,0.40); }
+    .b-v2 { color: #E8F4F8;  text-shadow: 0 1px 8px rgba(0,0,0,0.40); }
+    .b-v3 { color: #C0E7F0;  text-shadow: 0 1px 8px rgba(0,0,0,0.38); }
+    /* text-shadow 없는 버전도 비교 */
+    .b-v2-plain { color: #E8F4F8; }
+
+    /* ── 옵션 B 입력창 ── */
+    .side-b .input-mock {
+      background: rgba(255,255,255,0.10);
+      backdrop-filter: blur(30px);
+      border: 1px solid rgba(255,255,255,0.32);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.50);
+      color: #fff;
+      text-shadow: 0 1px 6px rgba(0,0,0,0.35);
+    }
+    .side-b .btn-send { background: rgba(255,255,255,0.85); color: #0D3B47; }
+    .side-b .btn-mic  { background: rgba(255,255,255,0.14); color: #E8F4F8; border: 1px solid rgba(255,255,255,0.32); }
+
+    /* ── 구분선 & 소제목 ── */
+    .divider {
+      height: 1px;
+      background: rgba(255,255,255,0.18);
+      margin: 14px 0;
+    }
+    .section-title {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 8px;
+      opacity: 0.45;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <!-- ═══ 옵션 A ═══ -->
+  <div class="side-a">
+    <div class="label">옵션 A — 어두운 글씨 + 밝은 패널</div>
+
+    <!-- 후보 색상들 -->
+    <div class="card">
+      <div class="section-title a-v2">글씨 색 후보</div>
+
+      <div class="swatch">
+        <div class="swatch-dot" style="background:#001F26"></div>
+        <div>
+          <div class="swatch-text a-v1">#001F26 — Almost Black Teal</div>
+          <div class="swatch-sub a-v1">가장 강한 대비. 차갑고 날카로운 느낌</div>
+        </div>
+      </div>
+
+      <div class="swatch">
+        <div class="swatch-dot" style="background:#0D3B47"></div>
+        <div>
+          <div class="swatch-text a-v2">#0D3B47 — Navy Teal</div>
+          <div class="swatch-sub a-v2">안정적이고 자연스러운 청자 계열</div>
+        </div>
+      </div>
+
+      <div class="swatch">
+        <div class="swatch-dot" style="background:#1B4F5A"></div>
+        <div>
+          <div class="swatch-text a-v3">#1B4F5A — Dark Teal-Slate</div>
+          <div class="swatch-sub a-v3">살짝 부드러움. 0D3B47보다 눈 편함</div>
+        </div>
+      </div>
+
+      <div class="swatch">
+        <div class="swatch-dot" style="background:#2C3E50"></div>
+        <div>
+          <div class="swatch-text a-v4">#2C3E50 — Slate Gray-Navy</div>
+          <div class="swatch-sub a-v4">중립적. 따뜻한 기운 살짝 있음</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 실제 UI 모형 -->
+    <div class="card">
+      <div class="section-title a-v2">실제 UI 느낌</div>
+      <div class="sample-body a-v2">스냅샷이 저장되었습니다. 브라우저 탭 3개, VS Code 워크스페이스 1개.</div>
+      <div class="sample-muted a-v2">방금 전</div>
+      <div class="divider"></div>
+      <div class="sample-body a-v2">어떤 작업을 도와드릴까요?</div>
+      <div class="input-mock">
+        <span class="a-v2">명령어를 입력하세요...</span>
+        <div class="btn-mock btn-send">↑</div>
+        <div class="btn-mock btn-mic">🎤</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ 옵션 B ═══ -->
+  <div class="side-b">
+    <div class="label">옵션 B — 밝은 글씨 + text-shadow</div>
+
+    <!-- 후보 색상들 -->
+    <div class="card">
+      <div class="section-title b-v1">글씨 색 후보</div>
+
+      <div class="swatch">
+        <div class="swatch-dot" style="background:#fff; border-color:rgba(255,255,255,0.3)"></div>
+        <div>
+          <div class="swatch-text b-v1">#FFFFFF — 순백</div>
+          <div class="swatch-sub b-v1">가장 선명. 강렬한 인상</div>
+        </div>
+      </div>
+
+      <div class="swatch">
+        <div class="swatch-dot" style="background:#E8F4F8; border-color:rgba(255,255,255,0.3)"></div>
+        <div>
+          <div class="swatch-text b-v2">#E8F4F8 — Off-white (blue tint) + shadow</div>
+          <div class="swatch-sub b-v2">흰색보다 눈 덜 피로. text-shadow 적용</div>
+        </div>
+      </div>
+
+      <div class="swatch">
+        <div class="swatch-dot" style="background:#E8F4F8; border-color:rgba(255,255,255,0.3)"></div>
+        <div>
+          <div class="swatch-text b-v2-plain">#E8F4F8 — Off-white (shadow 없음)</div>
+          <div class="swatch-sub b-v2-plain">shadow 없는 버전 비교용</div>
+        </div>
+      </div>
+
+      <div class="swatch">
+        <div class="swatch-dot" style="background:#C0E7F0; border-color:rgba(255,255,255,0.3)"></div>
+        <div>
+          <div class="swatch-text b-v3">#C0E7F0 — Pale Cyan</div>
+          <div class="swatch-sub b-v3">가장 부드러움. 배경에 녹아드는 느낌</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 실제 UI 모형 -->
+    <div class="card">
+      <div class="section-title b-v1">실제 UI 느낌</div>
+      <div class="sample-body b-v2">스냅샷이 저장되었습니다. 브라우저 탭 3개, VS Code 워크스페이스 1개.</div>
+      <div class="sample-muted b-v2">방금 전</div>
+      <div class="divider"></div>
+      <div class="sample-body b-v2">어떤 작업을 도와드릴까요?</div>
+      <div class="input-mock">
+        <span>명령어를 입력하세요...</span>
+        <div class="btn-mock btn-send">↑</div>
+        <div class="btn-mock btn-mic">🎤</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

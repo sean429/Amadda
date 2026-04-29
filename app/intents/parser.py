@@ -17,6 +17,9 @@ class RuleBasedIntentParser:
         if not normalized:
             return Intent(intent="unknown", raw_text=text)
 
+        if self._is_introduce(lowered, normalized):
+            return Intent(intent="introduce", raw_text=text)
+
         if self._is_restore_snapshot(lowered, normalized):
             return Intent(intent="restore_latest_snapshot", raw_text=text)
 
@@ -52,6 +55,18 @@ class RuleBasedIntentParser:
             return search_intent
 
         return Intent(intent="unknown", raw_text=text)
+
+    def _is_introduce(self, lowered: str, normalized: str) -> bool:
+        return (
+            "넌 누구" in normalized
+            or "너 누구" in normalized
+            or "누구야" in normalized
+            or "누구니" in normalized
+            or "자기소개" in normalized
+            or "소개해줘" in normalized
+            or "소개해 줘" in normalized
+            or "who are you" in lowered
+        )
 
     def _is_summarize(self, lowered: str, normalized: str) -> bool:
         return (
