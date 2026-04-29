@@ -13,7 +13,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from app.models import CommandResponse, SnapshotItem, TrackedProcess
-from app.services import auto_snapshot, dispatcher, parser, permission_service, repository
+from app.services import auto_snapshot, dispatcher, parser, permission_service, repository, wake_word
 
 
 logger = logging.getLogger(__name__)
@@ -207,6 +207,24 @@ def create_app() -> FastAPI:
         else:
             auto_snapshot.disable()
         return {"enabled": auto_snapshot.is_active}
+
+    # --- Wake word ---
+    @app.get("/settings/wakeword")
+    def get_wakeword() -> dict[str, Any]:
+        return {"enabled": wake_word.is_active}
+
+    @app.post("/settings/wakeword")
+    def set_wakeword(body: dict) -> dict[str, Any]:
+        if body.get("enabled", False):
+            wake_word.start()
+        else:
+            wake_word.stop()
+        return {"enabled": wake_word.is_active}
+
+    @app.get("/wakeword/poll")
+    def poll_wakeword() -> dict[str, Any]:
+        """프론트엔드가 800ms마다 폴링. triggered=True면 음성 명령 모드 진입."""
+        return {"triggered": wake_word.poll_and_clear()}
 
     return app
 

@@ -3,6 +3,7 @@ from __future__ import annotations
 import threading
 
 from app.actions.snapshots import SnapshotActionService
+from app.actions.wakeword import WakeWordListener
 from app.config import AUTO_SNAPSHOT_INTERVAL_MINUTES, DB_PATH
 from app.db.sqlite import SnapshotRepository
 from app.dispatcher.service import ActionDispatcher
@@ -15,6 +16,7 @@ snapshot_actions = SnapshotActionService(repository)
 parser = RuleBasedIntentParser()
 permission_service = PermissionService()
 dispatcher = ActionDispatcher(repository)
+wake_word = WakeWordListener()
 
 
 class AutoSnapshotScheduler:

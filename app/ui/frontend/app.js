@@ -10,6 +10,7 @@ const micBtn         = document.getElementById('mic-btn');
 const menuBtn        = document.getElementById('menu-btn');
 const dropdownOverlay= document.getElementById('dropdown-overlay');
 const autoSnapshotStatus = document.getElementById('auto-snapshot-status');
+const wakewordStatus     = document.getElementById('wakeword-status');
 
 // Panels
 const historyOverlay = document.getElementById('history-overlay');
@@ -22,8 +23,10 @@ const trackedAddBtn  = document.getElementById('tracked-add');
 // ─── State ───────────────────────────────────────────────────────────────────
 let micListening  = false;
 let autoSnapOn    = true;
-let pendingIntent = null;   // stores last command response awaiting confirmation
+let wakewordOn    = false;
+let pendingIntent = null;
 let trackedApps   = [];
+let _wakewordPollTimer = null;
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 function now() {
@@ -195,6 +198,46 @@ document.getElementById('menu-auto-snapshot').addEventListener('click', async ()
   closeDropdown();
 });
 
+document.getElementById('menu-wakeword').addEventListener('click', async () => {
+  wakewordOn = !wakewordOn;
+  await fetch(`${API}/settings/wakeword`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ enabled: wakewordOn }),
+  });
+  wakewordStatus.textContent = wakewordOn ? 'ON' : 'OFF';
+  if (wakewordOn) {
+    addSystemBlock('"아맞다" 또는 "아맞다야" 라고 말하면 음성 명령 모드가 시작돼요.');
+    _startWakewordPolling();
+  } else {
+    _stopWakewordPolling();
+    addSystemBlock('"아맞다" 트리거 비활성화됨.');
+  }
+  closeDropdown();
+});
+
+function _startWakewordPolling() {
+  if (_wakewordPollTimer) return;
+  _wakewordPollTimer = setInterval(async () => {
+    if (!wakewordOn || micListening) return;
+    try {
+      const res  = await fetch(`${API}/wakeword/poll`);
+      const data = await res.json();
+      if (data.triggered) {
+        addSystemBlock('👂 "아맞다" 감지 — 말씀하세요...');
+        await onMic();
+      }
+    } catch { /* 서버 일시 미응답 무시 */ }
+  }, 800);
+}
+
+function _stopWakewordPolling() {
+  if (_wakewordPollTimer) {
+    clearInterval(_wakewordPollTimer);
+    _wakewordPollTimer = null;
+  }
+}
+
 document.getElementById('menu-summarize').addEventListener('click', async () => {
   closeDropdown();
   addSystemBlock('AI 작업 요약 생성 중...');
@@ -323,6 +366,7 @@ trackedOverlay.addEventListener('click', e => {
 sendBtn.addEventListener('click', onSend);
 micBtn.addEventListener('click', onMic);
 textInput.addEventListener('keydown', e => { if (e.key === 'Enter') onSend(); });
+document.getElementById('clear-btn').addEventListener('click', () => { feed.innerHTML = ''; });
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
 (async () => {

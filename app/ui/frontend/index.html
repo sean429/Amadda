@@ -16,13 +16,23 @@
       <span class="logo-text">Amadda</span>
     </div>
 
-    <button class="menu-btn" id="menu-btn" aria-label="Menu">
-      <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
-        <rect x="2" y="5"  width="16" height="1.8" rx="0.9"/>
-        <rect x="2" y="9.1" width="16" height="1.8" rx="0.9"/>
-        <rect x="2" y="13.2" width="16" height="1.8" rx="0.9"/>
-      </svg>
-    </button>
+    <div style="display:flex;align-items:center;gap:6px;">
+      <button class="clear-btn" id="clear-btn" title="채팅 지우기">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="3 6 5 6 21 6"/>
+          <path d="M19 6l-1 14H6L5 6"/>
+          <path d="M10 11v6M14 11v6"/>
+          <path d="M9 6V4h6v2"/>
+        </svg>
+      </button>
+      <button class="menu-btn" id="menu-btn" aria-label="Menu">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+          <rect x="2" y="5"  width="16" height="1.8" rx="0.9"/>
+          <rect x="2" y="9.1" width="16" height="1.8" rx="0.9"/>
+          <rect x="2" y="13.2" width="16" height="1.8" rx="0.9"/>
+        </svg>
+      </button>
+    </div>
   </header>
 
   <!-- Hamburger dropdown -->
@@ -51,6 +61,11 @@
         <svg width="15" height="15" viewBox="0 0 20 20" fill="currentColor"><circle cx="10" cy="10" r="7" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M10 6v4l3 2"/></svg>
         <span>자동 스냅샷</span>
         <span class="status-badge" id="auto-snapshot-status" style="margin-left:auto">ON</span>
+      </div>
+      <div class="dropdown-item" id="menu-wakeword">
+        <svg width="15" height="15" viewBox="0 0 20 20" fill="currentColor"><rect x="7" y="2" width="6" height="9" rx="3"/><path d="M4 10a6 6 0 0012 0M10 17v2M7 19h6" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>
+        <span>"아맞다" 트리거</span>
+        <span class="status-badge" id="wakeword-status" style="margin-left:auto">OFF</span>
       </div>
       <div class="dropdown-divider"></div>
       <div class="dropdown-item" id="menu-summarize">
