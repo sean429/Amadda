@@ -208,6 +208,28 @@ def create_app() -> FastAPI:
             auto_snapshot.disable()
         return {"enabled": auto_snapshot.is_active}
 
+    # --- Settings (persistent) ---
+    @app.get("/settings")
+    def get_settings() -> dict[str, Any]:
+        from app.config import get_setting
+        key = get_setting("gemini_api_key", "")
+        return {
+            "gemini_api_key": ("*" * (len(key) - 4) + key[-4:]) if len(key) > 4 else ("*" * len(key)),
+            "gemini_api_key_set": bool(key),
+        }
+
+    @app.post("/settings")
+    def save_settings_endpoint(body: dict) -> dict[str, Any]:
+        from app import config
+        from app.config import save_settings
+        patch = {}
+        if "gemini_api_key" in body:
+            patch["gemini_api_key"] = body["gemini_api_key"]
+            # 런타임에도 즉시 반영
+            config.GEMINI_API_KEY = body["gemini_api_key"]
+        save_settings(patch)
+        return {"success": True}
+
     # --- Wake word ---
     @app.get("/settings/wakeword")
     def get_wakeword() -> dict[str, Any]:

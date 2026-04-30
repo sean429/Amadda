@@ -67,6 +67,10 @@
         <span>"아맞다" 트리거</span>
         <span class="status-badge" id="wakeword-status" style="margin-left:auto">OFF</span>
       </div>
+      <div class="dropdown-item" id="menu-settings">
+        <svg width="15" height="15" viewBox="0 0 20 20" fill="currentColor"><path d="M10 13a3 3 0 100-6 3 3 0 000 6zm7.94-2.06a8 8 0 00.06-1 8 8 0 00-.06-.94l2.03-1.58a.5.5 0 00.12-.63l-1.92-3.32a.5.5 0 00-.61-.22l-2.39.96a7.44 7.44 0 00-1.62-.94l-.36-2.54A.49.49 0 0012 1H8a.49.49 0 00-.49.42l-.36 2.54a7.44 7.44 0 00-1.62.94l-2.39-.96a.49.49 0 00-.61.22L.61 7.48a.49.49 0 00.12.63l2.03 1.58A7.7 7.7 0 002.7 11c0 .32.02.64.06.94L.73 13.52a.5.5 0 00-.12.63l1.92 3.32c.12.22.38.3.61.22l2.39-.96c.5.36 1.04.66 1.62.94l.36 2.54c.06.24.28.42.49.42h4c.21 0 .43-.18.49-.42l.36-2.54a7.44 7.44 0 001.62-.94l2.39.96c.23.08.49 0 .61-.22l1.92-3.32a.49.49 0 00-.12-.63l-2.03-1.58z"/></svg>
+        API 키 설정
+      </div>
       <div class="dropdown-divider"></div>
       <div class="dropdown-item" id="menu-summarize">
         <svg width="15" height="15" viewBox="0 0 20 20" fill="currentColor"><path d="M4 5h12v1.5H4V5zm0 4h12v1.5H4V9zm0 4h7v1.5H4V13z"/></svg>
@@ -126,6 +130,27 @@
         <input class="tracked-input" id="tracked-input" placeholder="process_name.exe" />
         <button class="tracked-add-btn" id="tracked-add">추가</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- Settings Panel -->
+<div class="panel-overlay" id="settings-overlay">
+  <div class="panel">
+    <div class="panel-header">
+      <span class="panel-title">API 키 설정</span>
+      <button class="panel-close" id="settings-close">✕</button>
+    </div>
+    <div class="panel-body">
+      <div style="font-size:12px;color:var(--text-muted);margin-bottom:14px;">
+        Gemini API 키는 <code style="background:rgba(255,255,255,0.12);padding:1px 6px;border-radius:4px;">%APPDATA%\Amadda\settings.json</code> 에 저장돼요.
+      </div>
+      <div style="font-size:13px;color:var(--text-secondary);margin-bottom:6px;">Gemini API Key</div>
+      <div class="tracked-input-row">
+        <input class="tracked-input" id="api-key-input" type="password" placeholder="AIza..." />
+        <button class="tracked-add-btn" id="api-key-save">저장</button>
+      </div>
+      <div id="api-key-status" style="font-size:12px;color:var(--text-muted);margin-top:8px;"></div>
     </div>
   </div>
 </div>

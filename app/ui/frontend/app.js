@@ -19,6 +19,9 @@ const trackedOverlay = document.getElementById('tracked-overlay');
 const trackedList    = document.getElementById('tracked-list');
 const trackedInput   = document.getElementById('tracked-input');
 const trackedAddBtn  = document.getElementById('tracked-add');
+const settingsOverlay = document.getElementById('settings-overlay');
+const apiKeyInput     = document.getElementById('api-key-input');
+const apiKeyStatus    = document.getElementById('api-key-status');
 
 // ─── State ───────────────────────────────────────────────────────────────────
 let micListening  = false;
@@ -237,6 +240,37 @@ function _stopWakewordPolling() {
     _wakewordPollTimer = null;
   }
 }
+
+document.getElementById('menu-settings').addEventListener('click', async () => {
+  closeDropdown();
+  settingsOverlay.classList.add('open');
+  const res  = await fetch(`${API}/settings`);
+  const data = await res.json();
+  apiKeyStatus.textContent = data.gemini_api_key_set
+    ? `현재 키: ${data.gemini_api_key}`
+    : '설정된 키 없음';
+  apiKeyInput.value = '';
+});
+
+document.getElementById('settings-close').addEventListener('click', () => {
+  settingsOverlay.classList.remove('open');
+});
+settingsOverlay.addEventListener('click', e => {
+  if (!e.target.closest('.panel')) settingsOverlay.classList.remove('open');
+});
+
+document.getElementById('api-key-save').addEventListener('click', async () => {
+  const key = apiKeyInput.value.trim();
+  if (!key) return;
+  await fetch(`${API}/settings`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ gemini_api_key: key }),
+  });
+  apiKeyStatus.textContent = '저장 완료!';
+  apiKeyInput.value = '';
+  setTimeout(() => settingsOverlay.classList.remove('open'), 800);
+});
 
 document.getElementById('menu-summarize').addEventListener('click', async () => {
   closeDropdown();
