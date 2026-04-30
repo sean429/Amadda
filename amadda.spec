@@ -119,6 +119,8 @@ a = Analysis(
 
 pyz = PYZ(a.pure)
 
+_ICON = str(ROOT / "assets" / "Amadda.ico") if (ROOT / "assets" / "Amadda.ico").exists() else None
+
 exe = EXE(
     pyz,
     a.scripts,
@@ -128,10 +130,11 @@ exe = EXE(
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
-    upx=False,          # UPX 압축 끔 — torch DLL 손상 방지
-    console=False,      # 콘솔 창 숨김
+    upx=False,
+    console=False,
     disable_windowed_traceback=False,
-    icon=None,          # 아이콘 있으면 경로 넣기: "assets/icon.ico"
+    icon=_ICON,
+    version=str(ROOT / "assets" / "version_info.txt"),
 )
 
 coll = COLLECT(
